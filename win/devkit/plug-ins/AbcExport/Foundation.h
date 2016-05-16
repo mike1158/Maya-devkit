@@ -91,6 +91,7 @@
 #include <maya/MItMeshVertex.h>
 #include <maya/MMatrix.h>
 #include <maya/MObjectArray.h>
+#include <maya/MObjectHandle.h>
 #include <maya/MPlug.h>
 #include <maya/MPlugArray.h>
 #include <maya/MPoint.h>

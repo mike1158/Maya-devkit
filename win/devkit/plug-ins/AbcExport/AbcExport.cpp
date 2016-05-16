@@ -82,6 +82,8 @@ try
 {
     MStatus status;
 
+    util::clearIsAnimatedCache();
+
     MTime oldCurTime = MAnimControl::currentTime();
 
     MArgParser argData(syntax(), args, &status);

@@ -114,6 +114,7 @@ bool getRotOrder(MTransformationMatrix::RotationOrder iOrder,
 // determine if a Maya Object is animated or not
 // copy from mayapit code (MayaPit.h .cpp)
 bool isAnimated(MObject & object, bool checkParent = false);
+void clearIsAnimatedCache();
 
 // determine if a joint is driven by FBIK.
 // The joint is animated but has no input connections.

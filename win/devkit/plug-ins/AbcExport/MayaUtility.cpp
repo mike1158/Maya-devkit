@@ -259,9 +259,28 @@ int util::getVisibilityType(const MPlug & iPlug)
     }
 }
 
+// Cache results of MAnimUtil::isAnimated(), as it can be quite slow
+// Ask Autodesk about Change Req #MAYA-43891
+typedef std::map<unsigned int, bool> IsAnimCacheMap;   // MObjectHandle.hashCode(), value=isAnimated
+static IsAnimCacheMap isAnimatedCache;                 // Is there a better place to put this??
+
+// Called by AbcExport::doIt()
+void util::clearIsAnimatedCache()
+{
+    isAnimatedCache.clear();
+}
+
 // does this cover all cases?
 bool util::isAnimated(MObject & object, bool checkParent)
 {
+    // Check the cache to see if we already know the answer.
+    const unsigned int objCacheKey = MObjectHandle(object).hashCode();
+    const IsAnimCacheMap::const_iterator cacheIter = isAnimatedCache.find(objCacheKey);
+    if (objCacheKey && (cacheIter != isAnimatedCache.end()))
+    {
+        return cacheIter->second;
+    }
+
     MStatus stat;
     MItDependencyGraph iter(object, MFn::kInvalid,
         MItDependencyGraph::kUpstream,
@@ -309,6 +328,7 @@ bool util::isAnimated(MObject & object, bool checkParent)
                 node.hasFn(MFn::kFluid) ||
                 node.hasFn(MFn::kPolyBoolOp))
         {
+            isAnimatedCache[objCacheKey] = true;
             return true;
         }
 
@@ -317,6 +337,7 @@ bool util::isAnimated(MObject & object, bool checkParent)
             MFnExpression fn(node, &stat);
             if (stat == MS::kSuccess && fn.isAnimated())
             {
+                isAnimatedCache[objCacheKey] = true;
                 return true;
             }
 		}
@@ -334,14 +355,33 @@ bool util::isAnimated(MObject & object, bool checkParent)
         nodesToCheckAnimCurve.push_back(nodeStruct);
     }
 	
+    // The nodesToCheckAnimCurve vector can contain many duplicates, each of which
+    // may result in a slow call to MAnimUtil::isAnimated().  So, we check the 
+    // cache and update it as we go through the loop.
     for (size_t i = 0; i < nodesToCheckAnimCurve.size(); ++i)
     {
-        if (MAnimUtil::isAnimated(nodesToCheckAnimCurve[i].node, nodesToCheckAnimCurve[i].checkParent))
+        const MObject& node = nodesToCheckAnimCurve[i].node;
+        const unsigned int nodeCacheKey = MObjectHandle(node).hashCode();
+        const IsAnimCacheMap::const_iterator nodeCacheIter = isAnimatedCache.find(nodeCacheKey);
+        bool nodeIsAnimated;
+        if (nodeCacheKey && (nodeCacheIter != isAnimatedCache.end()))
         {
+            nodeIsAnimated = nodeCacheIter->second;
+        }
+        else
+        {
+            nodeIsAnimated = MAnimUtil::isAnimated(node, nodesToCheckAnimCurve[i].checkParent);
+            isAnimatedCache[nodeCacheKey] = nodeIsAnimated;
+        }
+
+        if (nodeIsAnimated)
+        {
+            isAnimatedCache[objCacheKey] = true;
             return true;
         }
     }
 
+    isAnimatedCache[objCacheKey] = false;
     return false;
 }
 

@@ -81,6 +81,8 @@ MStatus AbcExport::doIt(const MArgList & args)
 try
 {
     MStatus status;
+    
+    util::clearIsAnimatedCache();
 
     MTime oldCurTime = MAnimControl::currentTime();
 
